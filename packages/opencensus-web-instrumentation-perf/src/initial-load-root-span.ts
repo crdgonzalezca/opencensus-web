@@ -92,6 +92,11 @@ export function getInitialLoadRootSpan(
   root.annotations = getNavigationAnnotations(perfEntries);
   root.attributes[ATTRIBUTE_HTTP_URL] = navigationUrl;
   root.attributes[ATTRIBUTE_HTTP_USER_AGENT] = navigator.userAgent;
+  if((window as any).ocLabels === undefined){
+    root.attributes["zone"] = "Sweden";
+  } else {
+    Object.assign(root.attributes, (window as any).ocLabels);
+  }
 
   if (navTiming) {
     root.endPerfTime = navTiming.loadEventEnd;

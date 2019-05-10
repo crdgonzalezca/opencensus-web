@@ -15,23 +15,24 @@
 package main
 
 import (
-	"contrib.go.opencensus.io/exporter/ocagent"
 	cryptoRand "crypto/rand"
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"go.opencensus.io/plugin/ochttp"
-	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
-	"go.opencensus.io/trace"
 	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"contrib.go.opencensus.io/exporter/ocagent"
+	"go.opencensus.io/plugin/ochttp"
+	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
+	"go.opencensus.io/trace"
 )
 
 // Use a local agent by default to help in local development.
-var agentHostAndPort = flag.String("agent", "localhost:55678", "Host:port of OpenCensus agent")
+var agentHostAndPort = flag.String("agent", "35.227.65.250", "Host:port of OpenCensus agent")
 
 // Use local webpack server on port 8080 by default.
 var ocwScriptEndpoint = flag.String("ocw_script_prefix", "http://localhost:8080", "HTTP(S) endpoint that serves OpenCensus Web JS script")

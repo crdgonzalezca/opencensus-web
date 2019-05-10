@@ -37,6 +37,8 @@ const WAIT_TIME_AFTER_LOAD_MS = 2000; // 2 seconds
 /** Trace endpoint in the OC agent. */
 const TRACE_ENDPOINT = '/v1/trace';
 
+const METRICS_ENDPOINT = '/v1/metrics';
+
 /**
  * Waits until after the document `load` event fires, and then uses the
  * `window.ocAgent` setting to configure an OpenCensus agent exporter and
@@ -51,6 +53,7 @@ export function exportRootSpanAfterLoadEvent() {
   tracing.registerExporter(
     new OCAgentExporter({
       agentEndpoint: `${windowWithOcwGlobals.ocAgent}${TRACE_ENDPOINT}`,
+      metricsEndpoint: `${windowWithOcwGlobals.ocAgent}${METRICS_ENDPOINT}`
     })
   );
 

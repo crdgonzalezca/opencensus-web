@@ -54,6 +54,9 @@ export interface OCAgentExporterOptions extends ExporterConfig {
    * in the `attributes` field of the `Node` object written to the agent.
    */
   attributes?: { [key: string]: string };
+
+
+  metricsEndpoint: string;
 }
 
 /**
@@ -72,6 +75,12 @@ export class OCAgentExporter implements Exporter {
    * @param rootSpans A list of root spans to publish.
    */
   publish(roots: RootSpan[]): Promise<number | string | void> {
+    let performance_value = performance.getEntriesByType('navigation')[0] as any;
+    const load_event_end_metric = (performance.getEntriesByType('navigation')[0] as any).loadEventEnd; 
+    const dns_lookup_metric = (performance_value.domainLookupEnd - performance_value.domainLookupStart).toString();
+    this.publish_metric(load_event_end_metric, "load_latencies");
+    this.publish_metric(dns_lookup_metric, "dns_latency");
+    this.publish_count_metric(this.get_max_asset(roots), "maximum_static_2");
     const xhr = new XMLHttpRequest();
     xhr.open('POST', this.config.agentEndpoint);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -85,7 +94,112 @@ export class OCAgentExporter implements Exporter {
     });
   }
 
-  onStartSpan(root: RootSpan) {}
+  get_max_asset(roots: RootSpan[]){
+    let max = 0;
+    let name = "";
+    for(const resource of roots[0].spans){
+      if(resource.duration > max){
+        max = resource.duration;
+        name = resource.name;
+      }
+    }
+    return {max, name};
+  }
+
+
+  publish_count_metric(metric_value: any, metric_name: string): void {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', this.config.metricsEndpoint);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    const boundaries = [5, 10, 20, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 2000, 2500, 3000, 4000, 5000, 5500, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000, 15000, 1600, 20000, 25000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 1200000];
+    const request = {
+      "node": {
+      },
+      "metrics": [{
+        "metric_descriptor": {
+          "name": "web/" + metric_name,
+          "description": "Maximum static file",
+          "unit": "ms",
+          "type": "CUMULATIVE_DISTRIBUTION",
+          label_keys: [{key: "host", description: "host"}, {key: "zone", description: "zone"}]
+        },
+        "timeseries": [{
+          "start_timestamp": new Date().toISOString(),
+          "points": [{
+            "timestamp": new Date().toISOString(),
+            "distribution_value": {
+              "count": 1,
+              "bucket_options": {
+                explicit: {bounds: boundaries}
+              },
+              buckets: this.fill_buckets(metric_value.max, boundaries)
+            }
+          }],
+          label_values: [{
+            value: location.hostname,
+            has_value: true,
+          },{
+            value: (((window as any).ocLabels || {}).zone) || "unknown",
+            has_value: true,
+          },],
+        }],
+        // "resource": {
+        //   "type": "global"
+        // },
+      }]
+    };
+    xhr.send(JSON.stringify(request));
+  }
+
+  fill_buckets(value: any, boundaries: any){
+    let buckets = new Array(boundaries.length).fill(0);
+    for(let i = 0; i < boundaries.length; i++){
+      if(value < boundaries[i]){
+        buckets[i] = 1;
+        break;
+      } 
+    }
+    return buckets.map(item => ({count: item}));
+  }
+
+
+  publish_metric(metric_value: any, metric_name: string): void {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', this.config.metricsEndpoint);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    const request = {
+      "node": {
+      },
+      "metrics": [{
+        "metric_descriptor": {
+          "name": "web/" + metric_name,
+          "description": "Page load time",
+          "unit": "ms",
+          "type": "GAUGE_DOUBLE",
+          label_keys: [{key: "host", description: "host"}, {key: "zone", description: "zone"}]
+        },
+        "timeseries": [{
+          "points": [{
+            "timestamp": new Date().toISOString(),
+            "double_value": metric_value,
+          }],
+          label_values: [{
+            value: location.hostname,
+            has_value: true,
+          },{
+            value: (((window as any).ocLabels || {}).zone) || "unknown",
+            has_value: true,
+          },],
+        }],
+        "resource": {
+          "type": "global"
+        },
+      }]
+    };
+    xhr.send(JSON.stringify(request));
+  }
+
+  onStartSpan(root: RootSpan) { }
 
   /**
    * Indicates that a root span is complete and ready to be exported. It will

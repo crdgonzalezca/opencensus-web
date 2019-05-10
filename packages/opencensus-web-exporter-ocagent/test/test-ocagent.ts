@@ -86,6 +86,7 @@ describe('OCAgentExporter', () => {
     exporter = new OCAgentExporter({
       serviceName: 'testService',
       agentEndpoint: 'fake-agent.com',
+      metricsEndpoint: 'fake-agent.com',
       attributes: { serviceAddr1: 'a' },
       bufferSize: BUFFER_SIZE,
       bufferTimeout: BUFFER_TIMEOUT,
