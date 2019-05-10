@@ -78,9 +78,9 @@ export class OCAgentExporter implements Exporter {
     let performance_value = performance.getEntriesByType('navigation')[0] as any;
     const load_event_end_metric = (performance.getEntriesByType('navigation')[0] as any).loadEventEnd; 
     const dns_lookup_metric = (performance_value.domainLookupEnd - performance_value.domainLookupStart).toString();
-    this.publish_metric(load_event_end_metric, "load_latencies");
+    this.publish_metric(load_event_end_metric, "load_latencies_4");
     this.publish_metric(dns_lookup_metric, "dns_latency");
-    this.publish_count_metric(this.get_max_asset(roots), "maximum_static_2");
+    this.publish_count_metric(this.get_max_asset(roots), "maximum_static_3", "Max static");
     const xhr = new XMLHttpRequest();
     xhr.open('POST', this.config.agentEndpoint);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -107,7 +107,7 @@ export class OCAgentExporter implements Exporter {
   }
 
 
-  publish_count_metric(metric_value: any, metric_name: string): void {
+  publish_count_metric(metric_value: any, metric_name: string, description: string): void {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', this.config.metricsEndpoint);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -118,13 +118,13 @@ export class OCAgentExporter implements Exporter {
       "metrics": [{
         "metric_descriptor": {
           "name": "web/" + metric_name,
-          "description": "Maximum static file",
+          "description": description,
           "unit": "ms",
           "type": "CUMULATIVE_DISTRIBUTION",
           label_keys: [{key: "host", description: "host"}, {key: "zone", description: "zone"}]
         },
         "timeseries": [{
-          "start_timestamp": new Date().toISOString(),
+          "start_timestamp": new Date(Date.now()-10).toISOString(),
           "points": [{
             "timestamp": new Date().toISOString(),
             "distribution_value": {
@@ -143,9 +143,9 @@ export class OCAgentExporter implements Exporter {
             has_value: true,
           },],
         }],
-        // "resource": {
-        //   "type": "global"
-        // },
+        "resource": {
+          "type": "global",
+        },
       }]
     };
     xhr.send(JSON.stringify(request));
