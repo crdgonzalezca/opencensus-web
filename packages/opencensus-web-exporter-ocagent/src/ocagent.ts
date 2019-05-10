@@ -78,9 +78,12 @@ export class OCAgentExporter implements Exporter {
     let performance_value = performance.getEntriesByType('navigation')[0] as any;
     const load_event_end_metric = (performance.getEntriesByType('navigation')[0] as any).loadEventEnd; 
     const dns_lookup_metric = (performance_value.domainLookupEnd - performance_value.domainLookupStart).toString();
-    this.publish_metric(load_event_end_metric, "load_latencies_4");
-    this.publish_metric(dns_lookup_metric, "dns_latency");
-    this.publish_count_metric(this.get_max_asset(roots), "maximum_static_3", "Max static");
+    this.publish_metric(load_event_end_metric, "nav_latency_distribution_test", "Web event latencies", "load", "event");
+    this.publish_metric(dns_lookup_metric, "nav_latency_distribution_test", "Web event latencies", "dns", "event");
+
+
+    const max_static_file = this.get_max_asset(roots);
+    this.publish_metric(max_static_file.max, "asset_latency_distribution", "Maximum static file", max_static_file.name, "asset");
     const xhr = new XMLHttpRequest();
     xhr.open('POST', this.config.agentEndpoint);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -163,7 +166,7 @@ export class OCAgentExporter implements Exporter {
   }
 
 
-  publish_metric(metric_value: any, metric_name: string): void {
+  publish_metric(metric_value: any, metric_name: string, description: string, label_value: string, label_key: string): void {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', this.config.metricsEndpoint);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -173,27 +176,34 @@ export class OCAgentExporter implements Exporter {
       "metrics": [{
         "metric_descriptor": {
           "name": "web/" + metric_name,
-          "description": "Page load time",
+          "description": description,
           "unit": "ms",
-          "type": "GAUGE_DOUBLE",
-          label_keys: [{key: "host", description: "host"}, {key: "zone", description: "zone"}]
+          "type": "CUMULATIVE_DISTRIBUTION",
+          "label_keys": [
+            { "key": "host", "description": "host" },
+            { "key": "zone", "description": "zone" },
+            { "key": label_key, "description": label_key }
+          ]
         },
         "timeseries": [{
+          "label_values": [
+            {
+              value: location.hostname,
+              has_value: true,
+            }, {
+              value: (((window as any).ocLabels || {}).zone) || "unknown",
+              has_value: true,
+            },
+            { "value": label_value, "has_value": true }
+          ],
           "points": [{
             "timestamp": new Date().toISOString(),
             "double_value": metric_value,
-          }],
-          label_values: [{
-            value: location.hostname,
-            has_value: true,
-          },{
-            value: (((window as any).ocLabels || {}).zone) || "unknown",
-            has_value: true,
-          },],
+          }]
         }],
         "resource": {
           "type": "global"
-        },
+        }
       }]
     };
     xhr.send(JSON.stringify(request));
